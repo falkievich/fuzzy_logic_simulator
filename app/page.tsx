@@ -11,21 +11,19 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Loader2, AlertTriangle, Info, Wifi, Server, Database, Network, Activity } from "lucide-react"
+import { fuzzyInference, type DiagnosisParams, type DiagnosisResult } from "@/lib/fuzzy-inference"
+import { diagnosticNames } from "@/lib/fuzzy-variables"
 
-// Replace the API_URL constant with this version that includes a check for the environment
-const API_URL =
-  typeof window !== "undefined" && window.location.hostname === "localhost" ? "http://localhost:5000/api" : "/api" // Fallback path for preview
-
-// Add these fallback data constants after the API_URL definition
+// Casos de prueba predefinidos
 const FALLBACK_TEST_CASES = [
   {
-    nombre: "Caso 1: Problema de ISP",
+    nombre: "Caso 1: Falla en Router",
     parametros: {
       velocidad_carga: 1.5,
       perdida_paquetes: 18,
       errores_dns: 0.2,
       senal_wifi: 85,
-      tiempo_respuesta: 280,
+      conexion: 40,
     },
   },
   {
@@ -35,64 +33,42 @@ const FALLBACK_TEST_CASES = [
       perdida_paquetes: 3,
       errores_dns: 7,
       senal_wifi: 75,
-      tiempo_respuesta: 150,
+      conexion: 60,
     },
   },
   {
-    nombre: "Caso 3: Problema de WiFi",
+    nombre: "Caso 3: Señal Wi-Fi Deficiente",
     parametros: {
       velocidad_carga: 2.8,
       perdida_paquetes: 5,
       errores_dns: 0.1,
       senal_wifi: 25,
-      tiempo_respuesta: 180,
+      conexion: 50,
     },
   },
   {
-    nombre: "Caso 4: Problema de Hardware",
+    nombre: "Caso 4: Falla del ISP",
     parametros: {
       velocidad_carga: 1.2,
       perdida_paquetes: 12,
       errores_dns: 0.3,
       senal_wifi: 90,
-      tiempo_respuesta: 320,
+      conexion: 20,
     },
   },
   {
-    nombre: "Caso 5: Congestión de Red",
+    nombre: "Caso 5: Congestión de Red Local",
     parametros: {
       velocidad_carga: 2.5,
       perdida_paquetes: 8,
       errores_dns: 1,
       senal_wifi: 65,
-      tiempo_respuesta: 290,
+      conexion: 70,
     },
   },
 ]
 
 // Interfaces para los tipos de datos
-interface DiagnosisParams {
-  velocidad_carga: number
-  perdida_paquetes: number
-  errores_dns: number
-  senal_wifi: number
-  tiempo_respuesta: number
-}
-
-interface ActivatedRule {
-  regla: string
-  nivel: number
-}
-
-interface DiagnosisResult {
-  resultados: Record<string, number>
-  diagnostico_principal: string
-  nivel_diagnostico: number
-  reglas_activadas: ActivatedRule[]
-  recomendaciones: string[]
-  error?: string
-}
-
 interface TestCase {
   nombre: string
   parametros: DiagnosisParams
@@ -105,16 +81,16 @@ export default function Home() {
     perdida_paquetes: 5,
     errores_dns: 1,
     senal_wifi: 70,
-    tiempo_respuesta: 150,
+    conexion: 80,
   })
 
   // Estado para los resultados del diagnóstico
   const [result, setResult] = useState<DiagnosisResult | null>(null)
 
   // Estado para los casos de prueba
-  const [testCases, setTestCases] = useState<TestCase[]>([])
+  const [testCases, setTestCases] = useState<TestCase[]>(FALLBACK_TEST_CASES)
 
-  // Estado para las imágenes de las funciones de membresía
+  // Estado para las imágenes de las funciones de membresía (no se usan en esta implementación)
   const [membershipImages, setMembershipImages] = useState<Record<string, string>>({})
 
   // Estado para el estado de carga
@@ -123,225 +99,30 @@ export default function Home() {
   // Estado para errores
   const [error, setError] = useState<string | null>(null)
 
-  // Cargar casos de prueba y gráficos de membresía al iniciar
+  // Cargar casos de prueba al iniciar
   useEffect(() => {
-    fetchTestCases()
-    fetchMembershipGraphs()
+    setTestCases(FALLBACK_TEST_CASES)
   }, [])
 
-  // Replace the fetchTestCases function with this improved version that better handles HTML responses
-  const fetchTestCases = async () => {
-    try {
-      // Try to fetch from API
-      const response = await fetch(`${API_URL}/casos-prueba`)
-
-      // Check if the response is JSON before trying to parse it
-      const contentType = response.headers.get("content-type")
-      if (!contentType || !contentType.includes("application/json")) {
-        console.warn("API returned non-JSON response, using fallback test cases")
-        setTestCases(FALLBACK_TEST_CASES)
-        return
-      }
-
-      if (!response.ok) {
-        // If API call fails, use fallback data
-        console.warn("API not available, using fallback test cases")
-        setTestCases(FALLBACK_TEST_CASES)
-        return
-      }
-
-      const data = await response.json()
-      setTestCases(data)
-    } catch (err) {
-      console.error("Error fetching test cases:", err)
-      // Use fallback data on error
-      setTestCases(FALLBACK_TEST_CASES)
-    }
-  }
-
-  // Replace the fetchMembershipGraphs function with this improved version
-  const fetchMembershipGraphs = async () => {
-    try {
-      const response = await fetch(`${API_URL}/graficos-membresia`)
-
-      // Check if the response is JSON before trying to parse it
-      const contentType = response.headers.get("content-type")
-      if (!contentType || !contentType.includes("application/json")) {
-        console.warn("API returned non-JSON response, membership graphs will not be displayed")
-        setMembershipImages({})
-        return
-      }
-
-      if (!response.ok) {
-        // If API call fails, set an empty object and don't show an error
-        console.warn("API not available, membership graphs will not be displayed")
-        setMembershipImages({})
-        return
-      }
-
-      const data = await response.json()
-      setMembershipImages(data)
-    } catch (err) {
-      console.error("Error fetching membership graphs:", err)
-      setMembershipImages({})
-    }
-  }
-
-  // Replace the performDiagnosis function with this improved version
+  // Función para realizar diagnóstico usando el motor de inferencia difusa
   const performDiagnosis = async () => {
     setLoading(true)
     setError(null)
 
     try {
-      const response = await fetch(`${API_URL}/diagnosticar`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(params),
-      })
+      // Pequeña pausa para simular procesamiento
+      await new Promise((resolve) => setTimeout(resolve, 500))
 
-      // Check if the response is JSON before trying to parse it
-      const contentType = response.headers.get("content-type")
-      if (!contentType || !contentType.includes("application/json")) {
-        console.warn("API returned non-JSON response, generating mock diagnosis result")
-        const mockResult = generateMockDiagnosis(params)
-        setResult(mockResult)
-        setLoading(false)
-        return
-      }
+      // Ejecutar el motor de inferencia difusa
+      const diagnosisResult = fuzzyInference(params)
 
-      if (!response.ok) {
-        // If API call fails, generate a mock result based on the input parameters
-        console.warn("API not available, generating mock diagnosis result")
-
-        // Simple mock logic to generate a plausible result
-        const mockResult = generateMockDiagnosis(params)
-        setResult(mockResult)
-        setLoading(false)
-        return
-      }
-
-      const data = await response.json()
-      setResult(data)
+      setResult(diagnosisResult)
     } catch (err) {
       console.error("Error performing diagnosis:", err)
-      // Generate mock result on error
-      const mockResult = generateMockDiagnosis(params)
-      setResult(mockResult)
+      setError(`Error en el diagnóstico: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setLoading(false)
     }
-  }
-
-  // Add this function to generate mock diagnosis results when the API is not available
-  const generateMockDiagnosis = (params: DiagnosisParams): DiagnosisResult => {
-    // Simple logic to determine the most likely diagnosis based on input parameters
-    let diagnostico_principal = "problema_isp"
-    let nivel_diagnostico = 50
-
-    // Very basic rules to determine the diagnosis
-    if (params.errores_dns > 3) {
-      diagnostico_principal = "problema_dns"
-      nivel_diagnostico = 70 + (params.errores_dns - 3) * 5
-    } else if (params.senal_wifi < 40) {
-      diagnostico_principal = "problema_wifi"
-      nivel_diagnostico = 70 + (40 - params.senal_wifi)
-    } else if (params.perdida_paquetes > 15) {
-      diagnostico_principal = "problema_isp"
-      nivel_diagnostico = 70 + (params.perdida_paquetes - 15) * 2
-    } else if (params.velocidad_carga < 2 && params.senal_wifi > 70) {
-      diagnostico_principal = "problema_hardware"
-      nivel_diagnostico = 70 + (2 - params.velocidad_carga) * 20
-    } else if (params.tiempo_respuesta > 250 && params.velocidad_carga < 3) {
-      diagnostico_principal = "congestion_red"
-      nivel_diagnostico = 70 + (params.tiempo_respuesta - 250) / 10
-    }
-
-    // Cap the level at 95
-    nivel_diagnostico = Math.min(nivel_diagnostico, 95)
-
-    // Generate mock results for all diagnosis types
-    const resultados: Record<string, number> = {
-      problema_isp: 30,
-      problema_hardware: 30,
-      problema_dns: 30,
-      problema_wifi: 30,
-      congestion_red: 30,
-    }
-
-    // Set the main diagnosis to have the highest value
-    resultados[diagnostico_principal] = nivel_diagnostico
-
-    // Generate mock recommendations
-    const recomendaciones = getMockRecommendations(diagnostico_principal, nivel_diagnostico)
-
-    // Generate mock activated rules
-    const reglas_activadas = [
-      {
-        regla: "Si velocidad_carga es baja y perdida_paquetes es alta entonces problema_isp es alto",
-        nivel: 0.8,
-      },
-      {
-        regla: "Si errores_dns es frecuente entonces problema_dns es alto",
-        nivel: 0.6,
-      },
-    ]
-
-    return {
-      resultados,
-      diagnostico_principal,
-      nivel_diagnostico,
-      reglas_activadas,
-      recomendaciones,
-    }
-  }
-
-  // Add this function to generate mock recommendations
-  const getMockRecommendations = (diagnostico: string, nivel: number): string[] => {
-    const recomendaciones: string[] = []
-
-    switch (diagnostico) {
-      case "problema_isp":
-        recomendaciones.push("Contactar al proveedor de servicios de Internet (ISP) para reportar el problema.")
-        recomendaciones.push("Verificar si hay mantenimientos programados en la zona.")
-        if (nivel > 70) {
-          recomendaciones.push("Solicitar una revisión técnica por parte del ISP.")
-        }
-        break
-      case "problema_hardware":
-        recomendaciones.push("Revisar el estado físico de los cables de red y conectores.")
-        recomendaciones.push("Verificar el funcionamiento del router y switches.")
-        if (nivel > 70) {
-          recomendaciones.push("Reemplazar los cables o conectores dañados.")
-        }
-        break
-      case "problema_dns":
-        recomendaciones.push("Verificar la configuración de DNS en los equipos afectados.")
-        recomendaciones.push(
-          "Considerar el uso de servidores DNS alternativos (como Google 8.8.8.8 o Cloudflare 1.1.1.1).",
-        )
-        if (nivel > 70) {
-          recomendaciones.push("Revisar si hay malware que esté afectando la resolución DNS.")
-        }
-        break
-      case "problema_wifi":
-        recomendaciones.push("Verificar la ubicación del router WiFi y considerar su reposicionamiento.")
-        recomendaciones.push("Revisar si hay interferencias de otros dispositivos electrónicos.")
-        if (nivel > 70) {
-          recomendaciones.push("Instalar repetidores WiFi en áreas con señal débil.")
-        }
-        break
-      case "congestion_red":
-        recomendaciones.push("Revisar si hay dispositivos o aplicaciones consumiendo excesivo ancho de banda.")
-        recomendaciones.push("Implementar políticas de QoS (Quality of Service) para priorizar tráfico crítico.")
-        if (nivel > 70) {
-          recomendaciones.push("Segmentar la red para distribuir mejor el tráfico.")
-        }
-        break
-    }
-
-    return recomendaciones
   }
 
   // Función para cargar un caso de prueba
@@ -351,21 +132,25 @@ export default function Home() {
 
   // Función para formatear el nombre del diagnóstico
   const formatDiagnosisName = (name: string) => {
-    return name.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+    return (
+      diagnosticNames[name as keyof typeof diagnosticNames] ||
+      name.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+    )
   }
 
   // Función para obtener el icono según el tipo de diagnóstico
   const getDiagnosisIcon = (diagnosisType: string) => {
     switch (diagnosisType) {
-      case "problema_isp":
+      case "falla_isp":
         return <Server className="h-5 w-5" />
-      case "problema_hardware":
+      case "falla_router":
         return <Database className="h-5 w-5" />
       case "problema_dns":
         return <Network className="h-5 w-5" />
-      case "problema_wifi":
+      case "senal_wifi_deficiente":
         return <Wifi className="h-5 w-5" />
-      case "congestion_red":
+      case "congestion_red_local":
+      case "saturacion_servidor_interno":
         return <Activity className="h-5 w-5" />
       default:
         return <Info className="h-5 w-5" />
@@ -395,7 +180,7 @@ export default function Home() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="diagnosis">Diagnóstico</TabsTrigger>
           <TabsTrigger value="test-cases">Casos de Prueba</TabsTrigger>
-          <TabsTrigger value="membership">Funciones de Membresía</TabsTrigger>
+          <TabsTrigger value="about">Acerca del Sistema</TabsTrigger>
         </TabsList>
 
         {/* Pestaña de Diagnóstico */}
@@ -406,6 +191,26 @@ export default function Home() {
               <h2 className="text-xl font-semibold mb-4">Síntomas de la Red</h2>
 
               <div className="space-y-6">
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label htmlFor="conexion">Estado de Conexión (%)</Label>
+                    <span className="text-sm">{params.conexion.toFixed(0)}%</span>
+                  </div>
+                  <Slider
+                    id="conexion"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={[params.conexion]}
+                    onValueChange={(value) => setParams({ ...params, conexion: value[0] })}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Inexistente (0-30)</span>
+                    <span>Intermitente (20-80)</span>
+                    <span>Estable (70-100)</span>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <Label htmlFor="velocidad_carga">Velocidad de Carga (Mbps)</Label>
@@ -483,26 +288,6 @@ export default function Home() {
                     <span>Débil (0-50)</span>
                     <span>Moderada (30-80)</span>
                     <span>Fuerte (70-100)</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="tiempo_respuesta">Tiempo de Respuesta (ms)</Label>
-                    <span className="text-sm">{params.tiempo_respuesta.toFixed(0)} ms</span>
-                  </div>
-                  <Slider
-                    id="tiempo_respuesta"
-                    min={0}
-                    max={500}
-                    step={1}
-                    value={[params.tiempo_respuesta]}
-                    onValueChange={(value) => setParams({ ...params, tiempo_respuesta: value[0] })}
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Rápido (0-100)</span>
-                    <span>Normal (50-250)</span>
-                    <span>Lento (200+)</span>
                   </div>
                 </div>
 
@@ -638,11 +423,11 @@ export default function Home() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Caso</TableHead>
+                      <TableHead>Conexión (%)</TableHead>
                       <TableHead>Velocidad (Mbps)</TableHead>
                       <TableHead>Pérdida (%)</TableHead>
                       <TableHead>Errores DNS</TableHead>
                       <TableHead>Señal WiFi (%)</TableHead>
-                      <TableHead>Tiempo (ms)</TableHead>
                       <TableHead className="text-right">Acción</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -650,11 +435,11 @@ export default function Home() {
                     {testCases.map((testCase, index) => (
                       <TableRow key={index}>
                         <TableCell className="font-medium">{testCase.nombre}</TableCell>
+                        <TableCell>{testCase.parametros.conexion}</TableCell>
                         <TableCell>{testCase.parametros.velocidad_carga}</TableCell>
                         <TableCell>{testCase.parametros.perdida_paquetes}</TableCell>
                         <TableCell>{testCase.parametros.errores_dns}</TableCell>
                         <TableCell>{testCase.parametros.senal_wifi}</TableCell>
-                        <TableCell>{testCase.parametros.tiempo_respuesta}</TableCell>
                         <TableCell className="text-right">
                           <Button variant="outline" size="sm" onClick={() => loadTestCase(testCase)}>
                             Cargar
@@ -669,75 +454,68 @@ export default function Home() {
           </Card>
         </TabsContent>
 
-        {/* Pestaña de Funciones de Membresía */}
-        <TabsContent value="membership">
+        {/* Pestaña de Acerca del Sistema */}
+        <TabsContent value="about">
           <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Funciones de Membresía</h2>
+            <h2 className="text-xl font-semibold mb-4">Acerca del Sistema Experto</h2>
 
-            {Object.keys(membershipImages).length === 0 ? (
-              <div className="space-y-4">
-                <div className="flex flex-col items-center justify-center h-40">
-                  <Info className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground text-center">
-                    Las imágenes de funciones de membresía no están disponibles en este momento.
-                    <br />
-                    En un entorno de producción, estas imágenes se generarían desde el servidor Python.
-                  </p>
-                </div>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium mb-2">Sistema Experto Basado en Lógica Difusa</h3>
+                <p className="text-sm text-muted-foreground">
+                  Este sistema utiliza lógica difusa para diagnosticar problemas de red en base a síntomas observados. A
+                  diferencia de la lógica booleana tradicional, la lógica difusa permite manejar conceptos imprecisos
+                  como "velocidad lenta" o "señal débil" de manera más natural y cercana al razonamiento humano.
+                </p>
+              </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="border rounded-lg p-4">
-                    <h3 className="text-md font-medium mb-2">Velocidad de Carga (Mbps)</h3>
-                    <div className="h-40 flex items-center justify-center bg-muted rounded">
-                      <p className="text-sm text-muted-foreground">Baja (0-3), Media (2-7), Alta (6+)</p>
-                    </div>
-                  </div>
-                  <div className="border rounded-lg p-4">
-                    <h3 className="text-md font-medium mb-2">Pérdida de Paquetes (%)</h3>
-                    <div className="h-40 flex items-center justify-center bg-muted rounded">
-                      <p className="text-sm text-muted-foreground">Ninguna (0), Moderada (1-15), Alta (15+)</p>
-                    </div>
-                  </div>
-                  <div className="border rounded-lg p-4">
-                    <h3 className="text-md font-medium mb-2">Errores DNS (por hora)</h3>
-                    <div className="h-40 flex items-center justify-center bg-muted rounded">
-                      <p className="text-sm text-muted-foreground">Inexistente (0), Ocasional (1-3), Frecuente (3+)</p>
-                    </div>
-                  </div>
-                  <div className="border rounded-lg p-4">
-                    <h3 className="text-md font-medium mb-2">Señal WiFi (%)</h3>
-                    <div className="h-40 flex items-center justify-center bg-muted rounded">
-                      <p className="text-sm text-muted-foreground">Débil (0-50), Moderada (30-80), Fuerte (70-100)</p>
-                    </div>
-                  </div>
-                </div>
+              <div>
+                <h3 className="text-lg font-medium mb-2">Variables Lingüísticas</h3>
+                <p className="text-sm text-muted-foreground mb-2">
+                  El sistema utiliza las siguientes variables lingüísticas:
+                </p>
+                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                  <li>
+                    <strong>Entradas (síntomas):</strong> Conexión, Velocidad de carga, Pérdida de paquetes, Errores
+                    DNS, Señal Wi-Fi
+                  </li>
+                  <li>
+                    <strong>Salidas (causas):</strong> Falla en Router, Falla del ISP, Problema de DNS, Señal Wi-Fi
+                    Deficiente, Congestión de Red Local, Saturación del Servidor Interno, No hay Fallo Detectado
+                  </li>
+                </ul>
               </div>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-6">
-                {Object.entries(membershipImages).map(([key, imageData]) => (
-                  <div key={key} className="border rounded-lg p-4">
-                    <h3 className="text-md font-medium mb-2">
-                      {key === "velocidad_carga"
-                        ? "Velocidad de Carga (Mbps)"
-                        : key === "perdida_paquetes"
-                          ? "Pérdida de Paquetes (%)"
-                          : key === "errores_dns"
-                            ? "Errores DNS (por hora)"
-                            : key === "senal_wifi"
-                              ? "Señal WiFi (%)"
-                              : key === "tiempo_respuesta"
-                                ? "Tiempo de Respuesta (ms)"
-                                : key}
-                    </h3>
-                    <img
-                      src={`data:image/png;base64,${imageData}`}
-                      alt={`Función de membresía para ${key}`}
-                      className="w-full h-auto"
-                    />
-                  </div>
-                ))}
+
+              <div>
+                <h3 className="text-lg font-medium mb-2">Funcionamiento</h3>
+                <ol className="list-decimal pl-5 space-y-1 text-sm text-muted-foreground">
+                  <li>
+                    <strong>Fuzzificación:</strong> Convierte los valores de entrada en grados de pertenencia a
+                    conjuntos difusos.
+                  </li>
+                  <li>
+                    <strong>Evaluación de reglas:</strong> Aplica reglas difusas del tipo "SI-ENTONCES" para determinar
+                    posibles causas.
+                  </li>
+                  <li>
+                    <strong>Agregación:</strong> Combina los resultados de todas las reglas activadas.
+                  </li>
+                  <li>
+                    <strong>Defuzzificación:</strong> Convierte el resultado difuso en un valor numérico mediante el
+                    método del centroide.
+                  </li>
+                </ol>
               </div>
-            )}
+
+              <div>
+                <h3 className="text-lg font-medium mb-2">Base de Conocimiento</h3>
+                <p className="text-sm text-muted-foreground">
+                  El sistema contiene 31 reglas difusas que representan el conocimiento experto sobre diagnóstico de
+                  redes. Estas reglas relacionan los síntomas observados con posibles causas, permitiendo un diagnóstico
+                  preciso incluso con información incompleta o imprecisa.
+                </p>
+              </div>
+            </div>
           </Card>
         </TabsContent>
       </Tabs>
