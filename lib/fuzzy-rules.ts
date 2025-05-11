@@ -1,340 +1,283 @@
-import { fuzzyAnd } from "./fuzzy-logic"
-
 // Tipo para representar una regla difusa
 export type FuzzyRule = {
-  antecedent: (inputs: Record<string, Record<string, number>>) => number
+  description: string
+  antecedent: (inputs: any) => number
   consequent: {
     variable: string
     term: string
   }
-  description: string
 }
 
-// Definición de las 30 reglas difusas según el modelado teórico
+// Definición de las 31 reglas difusas
 export const fuzzyRules: FuzzyRule[] = [
   // Reglas de un solo síntoma (12)
-  // 1. SI Pérdida de paquetes ES Alta → Falla en router ES Probable
   {
-    antecedent: (inputs) => inputs.perdida_paquetes.alta,
+    description: "R1: SI pérdida de paquetes ES Alta → Falla en router ES Probable",
+    antecedent: (i) => i.perdida_paquetes.alta,
     consequent: {
       variable: "falla_router",
       term: "probable",
     },
-    description: "Si pérdida de paquetes es alta, entonces falla en router es probable",
   },
-
-  // 2. SI Pérdida de paquetes ES Alta → Falla del ISP ES Probable
   {
-    antecedent: (inputs) => inputs.perdida_paquetes.alta,
+    description: "R2: SI pérdida de paquetes ES Alta → Falla del ISP ES Probable",
+    antecedent: (i) => i.perdida_paquetes.alta,
     consequent: {
       variable: "falla_isp",
       term: "probable",
     },
-    description: "Si pérdida de paquetes es alta, entonces falla del ISP es probable",
   },
-
-  // 3. SI Pérdida de paquetes ES Moderada → Congestión de red local ES Posible
   {
-    antecedent: (inputs) => inputs.perdida_paquetes.moderada,
+    description: "R3: SI pérdida de paquetes ES Moderada → Congestión de red local ES Posible",
+    antecedent: (i) => i.perdida_paquetes.moderada,
     consequent: {
       variable: "congestion_red_local",
       term: "posible",
     },
-    description: "Si pérdida de paquetes es moderada, entonces congestión de red local es posible",
   },
-
-  // 4. SI Errores DNS ES Frecuente → Problema de DNS ES Probable
   {
-    antecedent: (inputs) => inputs.errores_dns.frecuente,
+    description: "R4: SI errores DNS ES Frecuente → Problema de DNS ES Probable",
+    antecedent: (i) => i.errores_dns.frecuente,
     consequent: {
       variable: "problema_dns",
       term: "probable",
     },
-    description: "Si errores DNS son frecuentes, entonces problema de DNS es probable",
   },
-
-  // 5. SI Errores DNS ES Ocasional → Problema de DNS ES Posible
   {
-    antecedent: (inputs) => inputs.errores_dns.ocasional,
+    description: "R5: SI errores DNS ES Ocasional → Problema de DNS ES Posible",
+    antecedent: (i) => i.errores_dns.ocasional,
     consequent: {
       variable: "problema_dns",
       term: "posible",
     },
-    description: "Si errores DNS son ocasionales, entonces problema de DNS es posible",
   },
-
-  // 6. SI Velocidad de carga ES Baja → Saturación del servidor interno ES Probable
   {
-    antecedent: (inputs) => inputs.velocidad_carga.baja,
+    description: "R6: SI velocidad de carga ES Baja → Saturación del servidor interno ES Probable",
+    antecedent: (i) => i.velocidad_carga.baja,
     consequent: {
       variable: "saturacion_servidor_interno",
       term: "probable",
     },
-    description: "Si velocidad de carga es baja, entonces saturación del servidor interno es probable",
   },
-
-  // 7. SI Velocidad de carga ES Media → Saturación del servidor interno ES Posible
   {
-    antecedent: (inputs) => inputs.velocidad_carga.media,
+    description: "R7: SI velocidad de carga ES Media → Saturación del servidor interno ES Posible",
+    antecedent: (i) => i.velocidad_carga.media,
     consequent: {
       variable: "saturacion_servidor_interno",
       term: "posible",
     },
-    description: "Si velocidad de carga es media, entonces saturación del servidor interno es posible",
   },
-
-  // 8. SI Señal Wi-Fi ES Débil → Señal Wi-Fi deficiente ES Probable
   {
-    antecedent: (inputs) => inputs.senal_wifi.debil,
+    description: "R8: SI señal Wi-Fi ES Débil → Señal Wi-Fi deficiente ES Probable",
+    antecedent: (i) => i.senal_wifi.debil,
     consequent: {
       variable: "senal_wifi_deficiente",
       term: "probable",
     },
-    description: "Si señal Wi-Fi es débil, entonces señal Wi-Fi deficiente es probable",
   },
-
-  // 9. SI Señal Wi-Fi ES Media → Señal Wi-Fi deficiente ES Posible
   {
-    antecedent: (inputs) => inputs.senal_wifi.media,
+    description: "R9: SI señal Wi-Fi ES Media → Señal Wi-Fi deficiente ES Posible",
+    antecedent: (i) => i.senal_wifi.moderada,
     consequent: {
       variable: "senal_wifi_deficiente",
       term: "posible",
     },
-    description: "Si señal Wi-Fi es media, entonces señal Wi-Fi deficiente es posible",
   },
-
-  // 10. SI Conexión ES Intermitente → Falla del ISP ES Posible
   {
-    antecedent: (inputs) => inputs.conexion.intermitente,
+    description: "R10: SI conexión ES Intermitente → Falla del ISP ES Posible",
+    antecedent: (i) => i.conexion.intermitente,
     consequent: {
       variable: "falla_isp",
       term: "posible",
     },
-    description: "Si conexión es intermitente, entonces falla del ISP es posible",
   },
-
-  // 11. SI Conexión ES Inexistente → Falla del ISP ES Probable
   {
-    antecedent: (inputs) => inputs.conexion.inexistente,
+    description: "R11: SI conexión ES Inexistente → Falla del ISP ES Probable",
+    antecedent: (i) => i.conexion.inexistente,
     consequent: {
       variable: "falla_isp",
       term: "probable",
     },
-    description: "Si conexión es inexistente, entonces falla del ISP es probable",
   },
-
-  // 12. SI Conexión ES Estable → No hay fallo probable
   {
-    antecedent: (inputs) => inputs.conexion.estable,
+    description: "R12: SI conexión ES Estable → No hay fallo probable",
+    antecedent: (i) => i.conexion.estable,
     consequent: {
       variable: "no_hay_fallo",
       term: "probable",
     },
-    description: "Si conexión es estable, entonces no hay fallo probable",
   },
 
-  // Reglas de dos síntomas (12)
-  // 13. SI Pérdida de paquetes ES Alta Y Conexión ES Intermitente → Falla del ISP ES Probable
+  // Reglas de dos síntomas (13)
   {
-    antecedent: (inputs) => fuzzyAnd(inputs.perdida_paquetes.alta, inputs.conexion.intermitente),
+    description: "R13: SI pérdida de paquetes ES Alta Y conexión ES Intermitente → Falla del ISP ES Probable",
+    antecedent: (i) => Math.min(i.perdida_paquetes.alta, i.conexion.intermitente),
     consequent: {
       variable: "falla_isp",
       term: "probable",
     },
-    description: "Si pérdida de paquetes es alta y conexión es intermitente, entonces falla del ISP es probable",
   },
-
-  // 14. SI Pérdida de paquetes ES Alta Y Velocidad de carga ES Baja → Falla del ISP ES Probable
   {
-    antecedent: (inputs) => fuzzyAnd(inputs.perdida_paquetes.alta, inputs.velocidad_carga.baja),
+    description: "R14: SI pérdida de paquetes ES Alta Y velocidad de carga ES Baja → Falla del ISP ES Probable",
+    antecedent: (i) => Math.min(i.perdida_paquetes.alta, i.velocidad_carga.baja),
     consequent: {
       variable: "falla_isp",
       term: "probable",
     },
-    description: "Si pérdida de paquetes es alta y velocidad de carga es baja, entonces falla del ISP es probable",
   },
-
-  // 15. SI Pérdida de paquetes ES Alta Y Señal Wi-Fi ES Débil → Falla en router ES Probable
   {
-    antecedent: (inputs) => fuzzyAnd(inputs.perdida_paquetes.alta, inputs.senal_wifi.debil),
+    description: "R15: SI pérdida de paquetes ES Alta Y señal Wi-Fi ES Débil → Falla en router ES Probable",
+    antecedent: (i) => Math.min(i.perdida_paquetes.alta, i.senal_wifi.debil),
     consequent: {
       variable: "falla_router",
       term: "probable",
     },
-    description: "Si pérdida de paquetes es alta y señal Wi-Fi es débil, entonces falla en router es probable",
   },
-
-  // 16. SI Velocidad de carga ES Baja Y Errores DNS ES Frecuente → Problema de DNS ES Posible
   {
-    antecedent: (inputs) => fuzzyAnd(inputs.velocidad_carga.baja, inputs.errores_dns.frecuente),
+    description: "R16: SI velocidad de carga ES Baja Y errores DNS ES Frecuente → Problema de DNS ES Posible",
+    antecedent: (i) => Math.min(i.velocidad_carga.baja, i.errores_dns.frecuente),
     consequent: {
       variable: "problema_dns",
       term: "posible",
     },
-    description: "Si velocidad de carga es baja y errores DNS son frecuentes, entonces problema de DNS es posible",
   },
-
-  // 17. SI Velocidad de carga ES Baja Y Señal Wi-Fi ES Débil → Señal Wi-Fi deficiente ES Probable
   {
-    antecedent: (inputs) => fuzzyAnd(inputs.velocidad_carga.baja, inputs.senal_wifi.debil),
+    description: "R17: SI velocidad de carga ES Baja Y señal Wi-Fi ES Débil → Señal Wi-Fi deficiente ES Probable",
+    antecedent: (i) => Math.min(i.velocidad_carga.baja, i.senal_wifi.debil),
     consequent: {
       variable: "senal_wifi_deficiente",
       term: "probable",
     },
-    description: "Si velocidad de carga es baja y señal Wi-Fi es débil, entonces señal Wi-Fi deficiente es probable",
   },
-
-  // 18. SI Velocidad de carga ES Baja Y Conexión ES Intermitente → Falla del ISP ES Probable
   {
-    antecedent: (inputs) => fuzzyAnd(inputs.velocidad_carga.baja, inputs.conexion.intermitente),
+    description: "R18: SI velocidad de carga ES Baja Y conexión ES Intermitente → Falla del ISP ES Probable",
+    antecedent: (i) => Math.min(i.velocidad_carga.baja, i.conexion.intermitente),
     consequent: {
       variable: "falla_isp",
       term: "probable",
     },
-    description: "Si velocidad de carga es baja y conexión es intermitente, entonces falla del ISP es probable",
   },
-
-  // 19. SI Errores DNS ES Frecuente Y Conexión ES Intermitente → Problema de DNS ES Probable
   {
-    antecedent: (inputs) => fuzzyAnd(inputs.errores_dns.frecuente, inputs.conexion.intermitente),
+    description: "R19: SI errores DNS ES Frecuente Y conexión ES Intermitente → Problema de DNS ES Probable",
+    antecedent: (i) => Math.min(i.errores_dns.frecuente, i.conexion.intermitente),
     consequent: {
       variable: "problema_dns",
       term: "probable",
     },
-    description: "Si errores DNS son frecuentes y conexión es intermitente, entonces problema de DNS es probable",
   },
-
-  // 20. SI Señal Wi-Fi ES Débil Y Conexión ES Intermitente → Señal Wi-Fi deficiente ES Probable
   {
-    antecedent: (inputs) => fuzzyAnd(inputs.senal_wifi.debil, inputs.conexion.intermitente),
+    description: "R20: SI señal Wi-Fi ES Débil Y conexión ES Intermitente → Señal Wi-Fi deficiente ES Probable",
+    antecedent: (i) => Math.min(i.senal_wifi.debil, i.conexion.intermitente),
     consequent: {
       variable: "senal_wifi_deficiente",
       term: "probable",
     },
-    description: "Si señal Wi-Fi es débil y conexión es intermitente, entonces señal Wi-Fi deficiente es probable",
   },
-
-  // 21. SI Señal Wi-Fi ES Débil Y Pérdida de paquetes ES Moderada → Congestión de red local ES Posible
   {
-    antecedent: (inputs) => fuzzyAnd(inputs.senal_wifi.debil, inputs.perdida_paquetes.moderada),
+    description: "R21: SI señal Wi-Fi ES Débil Y pérdida de paquetes ES Moderada → Congestión de red local ES Posible",
+    antecedent: (i) => Math.min(i.senal_wifi.debil, i.perdida_paquetes.moderada),
     consequent: {
       variable: "congestion_red_local",
       term: "posible",
     },
-    description:
-      "Si señal Wi-Fi es débil y pérdida de paquetes es moderada, entonces congestión de red local es posible",
   },
-
-  // 22. SI Conexión ES Inexistente Y Errores DNS ES Frecuente → Problema de DNS ES Probable
   {
-    antecedent: (inputs) => fuzzyAnd(inputs.conexion.inexistente, inputs.errores_dns.frecuente),
+    description: "R22: SI conexión ES Inexistente Y errores DNS ES Frecuente → Problema de DNS ES Probable",
+    antecedent: (i) => Math.min(i.conexion.inexistente, i.errores_dns.frecuente),
     consequent: {
       variable: "problema_dns",
       term: "probable",
     },
-    description: "Si conexión es inexistente y errores DNS son frecuentes, entonces problema de DNS es probable",
   },
-
-  // 23. SI Conexión ES Inexistente Y Pérdida de paquetes ES Alta → Falla del ISP ES Probable
   {
-    antecedent: (inputs) => fuzzyAnd(inputs.conexion.inexistente, inputs.perdida_paquetes.alta),
+    description: "R23: SI conexión ES Inexistente Y pérdida de paquetes ES Alta → Falla del ISP ES Probable",
+    antecedent: (i) => Math.min(i.conexion.inexistente, i.perdida_paquetes.alta),
     consequent: {
       variable: "falla_isp",
       term: "probable",
     },
-    description: "Si conexión es inexistente y pérdida de paquetes es alta, entonces falla del ISP es probable",
   },
-
-  // 24. SI Velocidad de carga ES Media Y Señal Wi-Fi ES Media → Señal Wi-Fi deficiente ES Posible
   {
-    antecedent: (inputs) => fuzzyAnd(inputs.velocidad_carga.media, inputs.senal_wifi.media),
+    description: "R24: SI velocidad de carga ES Media Y señal Wi-Fi ES Media → Señal Wi-Fi deficiente ES Posible",
+    antecedent: (i) => Math.min(i.velocidad_carga.media, i.senal_wifi.moderada),
     consequent: {
       variable: "senal_wifi_deficiente",
       term: "posible",
     },
-    description: "Si velocidad de carga es media y señal Wi-Fi es media, entonces señal Wi-Fi deficiente es posible",
   },
-
-  // 25. SI Velocidad de carga ES Media Y Errores DNS ES Ocasional → Problema de DNS ES Posible
   {
-    antecedent: (inputs) => fuzzyAnd(inputs.velocidad_carga.media, inputs.errores_dns.ocasional),
+    description: "R25: SI velocidad de carga ES Media Y errores DNS ES Ocasional → Problema de DNS ES Posible",
+    antecedent: (i) => Math.min(i.velocidad_carga.media, i.errores_dns.ocasional),
     consequent: {
       variable: "problema_dns",
       term: "posible",
     },
-    description: "Si velocidad de carga es media y errores DNS son ocasionales, entonces problema de DNS es posible",
   },
 
   // Reglas de tres síntomas (6)
-  // 26. SI Pérdida de paquetes ES Alta Y Velocidad de carga ES Baja Y Conexión ES Intermitente → Falla del ISP ES Probable
   {
-    antecedent: (inputs) =>
-      fuzzyAnd(fuzzyAnd(inputs.perdida_paquetes.alta, inputs.velocidad_carga.baja), inputs.conexion.intermitente),
+    description:
+      "R26: SI pérdida de paquetes ES Alta Y velocidad de carga ES Baja Y conexión ES Intermitente → Falla del ISP ES Probable",
+    antecedent: (i) => Math.min(i.perdida_paquetes.alta, i.velocidad_carga.baja, i.conexion.intermitente),
     consequent: {
       variable: "falla_isp",
       term: "probable",
     },
-    description:
-      "Si pérdida de paquetes es alta, velocidad de carga es baja y conexión es intermitente, entonces falla del ISP es probable",
   },
-
-  // 27. SI Pérdida de paquetes ES Alta Y Errores DNS ES Frecuente Y Conexión ES Intermitente → Problema de DNS ES Probable
   {
-    antecedent: (inputs) =>
-      fuzzyAnd(fuzzyAnd(inputs.perdida_paquetes.alta, inputs.errores_dns.frecuente), inputs.conexion.intermitente),
+    description:
+      "R27: SI pérdida de paquetes ES Alta Y errores DNS ES Frecuente Y conexión ES Intermitente → Problema de DNS ES Probable",
+    antecedent: (i) => Math.min(i.perdida_paquetes.alta, i.errores_dns.frecuente, i.conexion.intermitente),
     consequent: {
       variable: "problema_dns",
       term: "probable",
     },
-    description:
-      "Si pérdida de paquetes es alta, errores DNS son frecuentes y conexión es intermitente, entonces problema de DNS es probable",
   },
-
-  // 28. SI Señal Wi-Fi ES Débil Y Velocidad de carga ES Baja Y Errores DNS ES Ocasional → Señal Wi-Fi deficiente ES Posible
   {
-    antecedent: (inputs) =>
-      fuzzyAnd(fuzzyAnd(inputs.senal_wifi.debil, inputs.velocidad_carga.baja), inputs.errores_dns.ocasional),
+    description:
+      "R28: SI señal Wi-Fi ES Débil Y velocidad de carga ES Baja Y errores DNS ES Ocasional → Señal Wi-Fi deficiente ES Posible",
+    antecedent: (i) => Math.min(i.senal_wifi.debil, i.velocidad_carga.baja, i.errores_dns.ocasional),
     consequent: {
       variable: "senal_wifi_deficiente",
       term: "posible",
     },
-    description:
-      "Si señal Wi-Fi es débil, velocidad de carga es baja y errores DNS son ocasionales, entonces señal Wi-Fi deficiente es posible",
   },
-
-  // 29. SI Pérdida de paquetes ES Moderada Y Velocidad de carga ES Media Y Conexión ES Intermitente → Congestión de red local ES Posible
   {
-    antecedent: (inputs) =>
-      fuzzyAnd(fuzzyAnd(inputs.perdida_paquetes.moderada, inputs.velocidad_carga.media), inputs.conexion.intermitente),
+    description:
+      "R29: SI pérdida de paquetes ES Moderada Y velocidad de carga ES Media Y conexión ES Intermitente → Congestión de red local ES Posible",
+    antecedent: (i) => Math.min(i.perdida_paquetes.moderada, i.velocidad_carga.media, i.conexion.intermitente),
     consequent: {
       variable: "congestion_red_local",
       term: "posible",
     },
-    description:
-      "Si pérdida de paquetes es moderada, velocidad de carga es media y conexión es intermitente, entonces congestión de red local es posible",
   },
-
-  // 30. SI Errores DNS ES Frecuente Y Velocidad de carga ES Baja Y Señal Wi-Fi ES Débil → Problema de DNS ES Probable
   {
-    antecedent: (inputs) =>
-      fuzzyAnd(fuzzyAnd(inputs.errores_dns.frecuente, inputs.velocidad_carga.baja), inputs.senal_wifi.debil),
+    description:
+      "R30: SI errores DNS ES Frecuente Y velocidad de carga ES Baja Y señal Wi-Fi ES Débil → Problema de DNS ES Probable",
+    antecedent: (i) => Math.min(i.errores_dns.frecuente, i.velocidad_carga.baja, i.senal_wifi.debil),
     consequent: {
       variable: "problema_dns",
       term: "probable",
     },
-    description:
-      "Si errores DNS son frecuentes, velocidad de carga es baja y señal Wi-Fi es débil, entonces problema de DNS es probable",
   },
-
-  // 31. SI Conexión ES Estable Y Velocidad de carga ES Alta Y Señal Wi-Fi ES Fuerte → No hay fallo probable
   {
-    antecedent: (inputs) =>
-      fuzzyAnd(fuzzyAnd(inputs.conexion.estable, inputs.velocidad_carga.alta), inputs.senal_wifi.fuerte),
+    description:
+      "R31: SI conexión ES Estable Y velocidad de carga ES Alta Y señal Wi-Fi ES Fuerte → No hay fallo probable",
+    antecedent: (i) => Math.min(i.conexion.estable, i.velocidad_carga.alta, i.senal_wifi.fuerte),
     consequent: {
       variable: "no_hay_fallo",
       term: "probable",
     },
-    description:
-      "Si conexión es estable, velocidad de carga es alta y señal Wi-Fi es fuerte, entonces no hay fallo probable",
   },
 ]
+
+// Mapeo de nombres de diagnóstico para la UI
+export const diagnosticNames = {
+  falla_router: "Falla en Router",
+  falla_isp: "Falla del ISP",
+  problema_dns: "Problema de DNS",
+  senal_wifi_deficiente: "Señal Wi-Fi Deficiente",
+  congestion_red_local: "Congestión de Red Local",
+  saturacion_servidor_interno: "Saturación del Servidor Interno",
+  no_hay_fallo: "No hay Fallo Detectado",
+}

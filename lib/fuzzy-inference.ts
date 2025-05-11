@@ -1,6 +1,22 @@
-import { evaluateMembership, centroidDefuzzification } from "./fuzzy-logic"
-import { inputVariables, outputVariables, outputDiscreteValues } from "./fuzzy-variables"
-import { fuzzyRules, type FuzzyRule } from "./fuzzy-rules"
+import {
+  centroidDefuzzification,
+  conexionInexistente,
+  conexionIntermitente,
+  conexionEstable,
+  velocidadBaja,
+  velocidadMedia,
+  velocidadAlta,
+  perdidaNinguna,
+  perdidaModerada,
+  perdidaAlta,
+  dnsInexistente,
+  dnsOcasional,
+  dnsFrecuente,
+  wifiDebil,
+  wifiModerada,
+  wifiFuerte,
+} from "./fuzzy-logic"
+import { fuzzyRules } from "./fuzzy-rules"
 
 // Tipo para los parámetros de diagnóstico
 export interface DiagnosisParams {
@@ -101,84 +117,89 @@ function generateRecommendations(diagnosis: string, level: number): string[] {
 export function fuzzyInference(params: DiagnosisParams): DiagnosisResult {
   try {
     // Paso 1: Fuzzificación - Evaluar las funciones de membresía para cada entrada
-    const fuzzifiedInputs = {
-      velocidad_carga: evaluateMembership(params.velocidad_carga, inputVariables.velocidad_carga),
-      perdida_paquetes: evaluateMembership(params.perdida_paquetes, inputVariables.perdida_paquetes),
-      errores_dns: evaluateMembership(params.errores_dns, inputVariables.errores_dns),
-      senal_wifi: evaluateMembership(params.senal_wifi, inputVariables.senal_wifi),
-      conexion: evaluateMembership(params.conexion, inputVariables.conexion),
+    const inputs = {
+      conexion: {
+        inexistente: conexionInexistente(params.conexion),
+        intermitente: conexionIntermitente(params.conexion),
+        estable: conexionEstable(params.conexion),
+      },
+      velocidad_carga: {
+        baja: velocidadBaja(params.velocidad_carga),
+        media: velocidadMedia(params.velocidad_carga),
+        alta: velocidadAlta(params.velocidad_carga),
+      },
+      perdida_paquetes: {
+        ninguna: perdidaNinguna(params.perdida_paquetes),
+        moderada: perdidaModerada(params.perdida_paquetes),
+        alta: perdidaAlta(params.perdida_paquetes),
+      },
+      errores_dns: {
+        inexistente: dnsInexistente(params.errores_dns),
+        ocasional: dnsOcasional(params.errores_dns),
+        frecuente: dnsFrecuente(params.errores_dns),
+      },
+      senal_wifi: {
+        debil: wifiDebil(params.senal_wifi),
+        moderada: wifiModerada(params.senal_wifi),
+        fuerte: wifiFuerte(params.senal_wifi),
+      },
     }
 
-    // Paso 2: Evaluación de reglas - Calcular el grado de activación de cada regla
-    const activatedRules: ActivatedRule[] = []
-    const outputAggregation: Record<string, Record<string, number>> = {}
+    // Paso 2: Inicializar la estructura de salida
+    const outputFuzzy: Record<string, Record<string, number>> = {
+      falla_router: { improbable: 0, posible: 0, probable: 0 },
+      falla_isp: { improbable: 0, posible: 0, probable: 0 },
+      problema_dns: { improbable: 0, posible: 0, probable: 0 },
+      senal_wifi_deficiente: { improbable: 0, posible: 0, probable: 0 },
+      congestion_red_local: { improbable: 0, posible: 0, probable: 0 },
+      saturacion_servidor_interno: { improbable: 0, posible: 0, probable: 0 },
+      no_hay_fallo: { improbable: 0, posible: 0, probable: 0 },
+    }
 
-    // Inicializar la agregación de salidas
-    Object.keys(outputVariables).forEach((variable) => {
-      outputAggregation[variable] = {
-        improbable: 0,
-        posible: 0,
-        probable: 0,
-      }
-    })
+    // Paso 3: Evaluación de reglas y agregación
+    const reglas_activadas: ActivatedRule[] = []
 
-    // Evaluar cada regla
-    fuzzyRules.forEach((rule: FuzzyRule) => {
-      const activationLevel = rule.antecedent(fuzzifiedInputs)
+    for (const rule of fuzzyRules) {
+      const alpha = rule.antecedent(inputs)
 
-      if (activationLevel > 0) {
+      if (alpha > 0) {
         // Registrar la regla activada
-        activatedRules.push({
+        reglas_activadas.push({
           regla: rule.description,
-          nivel: activationLevel,
+          nivel: alpha,
         })
 
         // Agregar el resultado a la salida correspondiente (método máximo)
         const { variable, term } = rule.consequent
-        outputAggregation[variable][term] = Math.max(outputAggregation[variable][term], activationLevel)
+        outputFuzzy[variable][term] = Math.max(outputFuzzy[variable][term], alpha)
       }
-    })
+    }
 
-    // Paso 3: Defuzzificación - Convertir los resultados difusos en valores nítidos
-    const crispResults: Record<string, number> = {}
+    // Paso 4: Defuzzificación - Convertir los resultados difusos en valores nítidos
+    const terms = ["improbable", "posible", "probable"]
+    const xValues = { improbable: 25, posible: 50, probable: 75 }
+    const resultados: Record<string, number> = {}
 
-    Object.entries(outputAggregation).forEach(([variable, terms]) => {
-      // Preparar los valores para la defuzzificación por centroide
-      const membershipDegrees: number[] = []
-      const outputValues: number[] = []
+    for (const varName in outputFuzzy) {
+      const membershipDegrees = terms.map((t) => outputFuzzy[varName][t])
+      const outputValues = terms.map((t) => xValues[t as keyof typeof xValues])
+      resultados[varName] = centroidDefuzzification(outputValues, membershipDegrees)
+    }
 
-      Object.entries(terms).forEach(([term, degree]) => {
-        if (degree > 0) {
-          membershipDegrees.push(degree)
-          outputValues.push(outputDiscreteValues[term as keyof typeof outputDiscreteValues])
-        }
-      })
+    // Paso 5: Determinar el diagnóstico principal
+    const diagnostico_principal = Object.keys(resultados).reduce((a, b) => (resultados[a] > resultados[b] ? a : b))
+    const nivel_diagnostico = resultados[diagnostico_principal]
 
-      // Calcular el valor nítido usando el método del centroide
-      crispResults[variable] = centroidDefuzzification(outputValues, membershipDegrees)
-    })
-
-    // Paso 4: Determinar el diagnóstico principal
-    let mainDiagnosis = ""
-    let maxLevel = 0
-
-    Object.entries(crispResults).forEach(([diagnosis, level]) => {
-      if (level > maxLevel) {
-        mainDiagnosis = diagnosis
-        maxLevel = level
-      }
-    })
-
-    // Paso 5: Generar recomendaciones
-    const recommendations = generateRecommendations(mainDiagnosis, maxLevel)
+    // Paso 6: Generar recomendaciones
+    const recomendaciones = generateRecommendations(diagnostico_principal, nivel_diagnostico)
 
     // Devolver el resultado del diagnóstico
     return {
-      resultados: crispResults,
-      diagnostico_principal: mainDiagnosis,
-      nivel_diagnostico: maxLevel,
-      reglas_activadas: activatedRules,
-      recomendaciones: recommendations,
+      resultados,
+      diagnostico_principal,
+      nivel_diagnostico,
+      reglas_activadas,
+      recomendaciones,
     }
   } catch (error) {
     console.error("Error en el motor de inferencia difusa:", error)

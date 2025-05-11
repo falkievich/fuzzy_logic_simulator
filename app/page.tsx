@@ -12,7 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Loader2, AlertTriangle, Info, Wifi, Server, Database, Network, Activity } from "lucide-react"
 import { fuzzyInference, type DiagnosisParams, type DiagnosisResult } from "@/lib/fuzzy-inference"
-import { diagnosticNames } from "@/lib/fuzzy-variables"
+import { diagnosticNames } from "@/lib/fuzzy-rules"
 
 // Casos de prueba predefinidos
 const FALLBACK_TEST_CASES = [
@@ -89,9 +89,6 @@ export default function Home() {
 
   // Estado para los casos de prueba
   const [testCases, setTestCases] = useState<TestCase[]>(FALLBACK_TEST_CASES)
-
-  // Estado para las imágenes de las funciones de membresía (no se usan en esta implementación)
-  const [membershipImages, setMembershipImages] = useState<Record<string, string>>({})
 
   // Estado para el estado de carga
   const [loading, setLoading] = useState(false)
@@ -491,14 +488,15 @@ export default function Home() {
                 <ol className="list-decimal pl-5 space-y-1 text-sm text-muted-foreground">
                   <li>
                     <strong>Fuzzificación:</strong> Convierte los valores de entrada en grados de pertenencia a
-                    conjuntos difusos.
+                    conjuntos difusos usando funciones de membresía triangulares.
                   </li>
                   <li>
                     <strong>Evaluación de reglas:</strong> Aplica reglas difusas del tipo "SI-ENTONCES" para determinar
-                    posibles causas.
+                    posibles causas, usando operadores MIN para AND y MAX para OR.
                   </li>
                   <li>
-                    <strong>Agregación:</strong> Combina los resultados de todas las reglas activadas.
+                    <strong>Agregación:</strong> Combina los resultados de todas las reglas activadas usando el método
+                    máximo.
                   </li>
                   <li>
                     <strong>Defuzzificación:</strong> Convierte el resultado difuso en un valor numérico mediante el
