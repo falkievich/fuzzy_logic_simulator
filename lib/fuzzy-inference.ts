@@ -1,5 +1,4 @@
 import {
-  centroidDefuzzification,
   conexionInexistente,
   conexionIntermitente,
   conexionEstable,
@@ -113,6 +112,35 @@ function generateRecommendations(diagnosis: string, level: number): string[] {
   return recommendations
 }
 
+// Función para calcular el centroide con rangos continuos
+function continuousCentroidDefuzzification(
+  outputRanges: { term: string; min: number; max: number }[],
+  membershipDegrees: Record<string, number>,
+): number {
+  // Número de puntos para la discretización
+  const numPoints = 100
+  let numerator = 0
+  let denominator = 0
+
+  // Para cada término lingüístico
+  for (const range of outputRanges) {
+    const { term, min, max } = range
+    const membershipDegree = membershipDegrees[term] || 0
+
+    if (membershipDegree > 0) {
+      // Discretizar el rango y calcular el centroide
+      const step = (max - min) / numPoints
+      for (let i = 0; i <= numPoints; i++) {
+        const x = min + i * step
+        numerator += x * membershipDegree
+        denominator += membershipDegree
+      }
+    }
+  }
+
+  return denominator === 0 ? 0 : numerator / denominator
+}
+
 // Motor de inferencia difusa
 export function fuzzyInference(params: DiagnosisParams): DiagnosisResult {
   try {
@@ -175,15 +203,20 @@ export function fuzzyInference(params: DiagnosisParams): DiagnosisResult {
       }
     }
 
-    // Paso 4: Defuzzificación - Convertir los resultados difusos en valores nítidos
-    const terms = ["improbable", "posible", "probable"]
-    const xValues = { improbable: 25, posible: 50, probable: 75 }
+    // Paso 4: Defuzzificación con rangos continuos
+    // Definir los rangos para cada término lingüístico
+    const outputRanges = [
+      { term: "improbable", min: 0, max: 33 },
+      { term: "posible", min: 33, max: 67 },
+      { term: "probable", min: 67, max: 100 },
+    ]
+
     const resultados: Record<string, number> = {}
 
+    // Para cada variable de salida
     for (const varName in outputFuzzy) {
-      const membershipDegrees = terms.map((t) => outputFuzzy[varName][t])
-      const outputValues = terms.map((t) => xValues[t as keyof typeof xValues])
-      resultados[varName] = centroidDefuzzification(outputValues, membershipDegrees)
+      // Calcular el centroide usando rangos continuos
+      resultados[varName] = continuousCentroidDefuzzification(outputRanges, outputFuzzy[varName])
     }
 
     // Paso 5: Determinar el diagnóstico principal

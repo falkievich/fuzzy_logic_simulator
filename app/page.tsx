@@ -14,6 +14,26 @@ import { Loader2, AlertTriangle, Info, Wifi, Server, Database, Network, Activity
 import { fuzzyInference, type DiagnosisParams, type DiagnosisResult } from "@/lib/fuzzy-inference"
 import { diagnosticNames } from "@/lib/fuzzy-rules"
 
+// Componente para la leyenda de colores
+const ColorLegend = () => {
+  return (
+    <div className="flex items-center justify-center gap-4 mb-4 text-sm">
+      <div className="flex items-center">
+        <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
+        <span>Improbable (0-33%)</span>
+      </div>
+      <div className="flex items-center">
+        <div className="w-3 h-3 rounded-full bg-yellow-500 mr-1"></div>
+        <span>Posible (33-67%)</span>
+      </div>
+      <div className="flex items-center">
+        <div className="w-3 h-3 rounded-full bg-red-500 mr-1"></div>
+        <span>Probable (67-100%)</span>
+      </div>
+    </div>
+  )
+}
+
 // Casos de prueba predefinidos
 const FALLBACK_TEST_CASES = [
   {
@@ -156,8 +176,8 @@ export default function Home() {
 
   // Función para obtener el color según el nivel de diagnóstico
   const getDiagnosisColor = (level: number) => {
-    if (level < 30) return "bg-green-500"
-    if (level < 70) return "bg-yellow-500"
+    if (level < 33) return "bg-green-500"
+    if (level < 67) return "bg-yellow-500"
     return "bg-red-500"
   }
 
@@ -303,6 +323,9 @@ export default function Home() {
 
             {/* Resultados del diagnóstico */}
             <Card className="p-6">
+              {/* Leyenda de colores */}
+              <ColorLegend />
+
               <h2 className="text-xl font-semibold mb-4">Resultados del Diagnóstico</h2>
 
               {loading ? (
